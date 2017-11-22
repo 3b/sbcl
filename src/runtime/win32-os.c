@@ -63,6 +63,7 @@
 #include <string.h>
 #include "print.h"
 #include <shlobj.h>
+#include <dbghelp.h>
 
 /* missing definitions for modern mingws */
 #ifndef EH_UNWINDING
@@ -1922,6 +1923,9 @@ void scratch(void)
 
     /* from advapi32.dll */
     CryptGenRandom(0, 0, 0);
+
+    /* from dbghelp.dll */
+    SymCleanup(0);
 }
 
 char *os_get_runtime_executable_path()

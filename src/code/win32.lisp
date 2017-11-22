@@ -978,3 +978,121 @@ absense."
                  (values nil (get-last-error)))))
       (unless (%crypt-release-context context 0)
         (win32-error '%crypt-release-context)))))
+
+;;; Dbghelp.dll routines for better foreign function name lookup
+
+(defconstant symopt-case-insensitive #x00000001)
+(defconstant symopt-undname #x00000002)
+(defconstant symopt-deferred-loads #x00000004)
+(defconstant symopt-no-cpp #x00000008)
+(defconstant symopt-load-lines #x00000010)
+(defconstant symopt-load-anything #x00000040)
+(defconstant symopt-ignore-cvrec #x00000080)
+(defconstant symopt-no-unqualified-loads #x00000100)
+(defconstant symopt-fail-critical-errors #x00000200)
+(defconstant symopt-exact-symbols #x00000400)
+(defconstant symopt-allow-absolute-symbols #x00000800)
+(defconstant symopt-ignore-nt-sympath #x00001000)
+(defconstant symopt-include-32bit-modules #x00002000)
+(defconstant symopt-publics-only #x00004000)
+(defconstant symopt-no-publics #x00008000)
+(defconstant symopt-auto-publics #x00010000)
+(defconstant symopt-no-image-search #x00020000)
+(defconstant symopt-secure #x00040000)
+(defconstant symopt-no-prompts #x00080000)
+(defconstant symopt-overwrite #x00100000)
+(defconstant symopt-ignore-imagedir #x00200000)
+(defconstant symopt-flat-directory #x00400000)
+(defconstant symopt-favor-compressed #x00800000)
+(defconstant symopt-allow-zero-address #x01000000)
+(defconstant symopt-disable-symsrv-autodetect #x02000000)
+(defconstant symopt-debug #x80000000)
+
+(defconstant max-sym-name 2000)
+
+(define-alien-type ulong64 (unsigned 64))
+(define-alien-type dword64 (signed 64))
+
+(define-alien-type symbol-info
+    (struct nil
+            (size-of-struct ulong)
+            (type-index ulong)
+            (reserved (array ulong64 2))
+            (index ulong )
+            (size ulong)
+            (mod-base ulong64)
+            (flags ulong)
+            (value ulong64)
+            (address ulong64)
+            (register ulong)
+            (scope ulong)
+            (tag ulong)
+            (name-len ulong)
+            (max-name-len ulong)
+            ;; fixme: name is really a variable length field, probably
+            ;; should only allocate as much as needed
+            (name (array tchar #.max-sym-name))))
+
+(define-alien-routine ("SymSetOptions" sym-set-options) (signed 32)
+  (options (signed 32)))
+
+(define-alien-routine (#+sb-unicode "SymInitializeW"
+                       #-sb-unicode "SymInitialize"
+                       sym-initialize) lispbool
+  (process handle)
+  (user-search-path system-string)
+  (invade-process bool))
+
+(define-alien-routine ("SymCleanup" sym-cleanup) bool
+  (process handle))
+
+(define-alien-routine (#+sb-unicode "SymFromAddrW"
+                       #-sb-unicode "SymFromAddr"
+                       sym-from-addr) lispbool
+  (process handle)
+  (address dword64)
+  (displacement dword64 :out)
+  (symbol (* symbol-info)))
+
+(define-alien-routine (#+sb-unicode "SymFromNameW"
+                       #-sb-unicode "SymFromName"
+                       sym-from-name) lispbool
+  (process handle)
+  (name system-string)
+  (symbol (* symbol-info)))
+
+(define-alien-routine ("SymRefreshModuleList" sym-refresh-module-list) lispbool
+  (process handle))
+
+
+;; run body with a minimally initialized symbol-info
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defmacro with-dbghelp-symbol-info ((info) &body body)
+    `(with-alien ((,info symbol-info))
+       (setf (slot ,info 'size-of-struct) (+ (/ (alien-size symbol-info)
+                                                8)
+                                             ,(- (* 2 max-sym-name))))
+       (setf (slot ,info 'max-name-len) max-sym-name)
+       ,@body)))
+
+;;; Use Dbghelp to look up the name of a foreign symbol by address
+(defun dbghelp-sym-name (sap)
+  (with-dbghelp-symbol-info (info)
+    (when (sym-from-addr (get-current-process)
+                         (if (integerp sap)
+                             sap
+                             (sap-int sap))
+                         (alien-sap info))
+      (decode-system-string (slot info 'name)))))
+
+;;; set up and initialize dbghelp.dll
+(defun initialize-dbghelp ()
+  (sym-set-options (logior
+                    ;; load symbols on demand
+                    symopt-deferred-loads
+                    ;; don't display a system dialoog box on media
+                    ;; failure
+                    symopt-fail-critical-errors
+                    ;; use compressed files if available
+                    symopt-favor-compressed))
+  (sym-initialize (get-current-process) nil 1))

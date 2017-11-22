@@ -389,3 +389,6 @@ true to stop searching)." *console-control-spec*)
                      (wait-object-or-signal handle))))))
       (sb-impl::get-processes-status-changes)))
   process)
+
+(load-shared-object "Dbghelp.dll")
+(pushnew 'initialize-dbghelp sb-ext:*init-hooks*)
