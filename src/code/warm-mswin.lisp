@@ -393,3 +393,6 @@ true to stop searching)." *console-control-spec*)
           (setf (sb-impl::process-%status process) :exited
                 (sb-impl::process-%exit-code process) code)))))
   process)
+
+(load-shared-object "Dbghelp.dll")
+(pushnew 'initialize-dbghelp sb-ext:*init-hooks*)
