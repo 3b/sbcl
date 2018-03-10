@@ -1899,6 +1899,9 @@ void scratch(void)
 
     /* from advapi32.dll */
     CryptGenRandom(0, 0, 0);
+
+    /* from dbghelp.dll */
+    SymCleanup(0);
 }
 
 char *os_get_runtime_executable_path()
