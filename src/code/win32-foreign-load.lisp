@@ -63,7 +63,7 @@
                  namestring (sb-win32:format-system-message (sb-win32:get-last-error))))
         (setf (shared-object-handle obj) handle)
         (ignore-errors
-         (sb!win32::sym-refresh-module-list (sb!win32::get-current-process)))
+         (sb-win32::sym-refresh-module-list (sb-win32::get-current-process)))
         handle)
       (extern-alien "runtime_module_handle" hinstance)))
 

@@ -831,7 +831,7 @@
   (let ((name (or (sap-foreign-symbol sap)
                   #!+win32
                   (ignore-errors
-                   (sb!win32::dbghelp-sym-name sap)))))
+                   (sb-win32::dbghelp-sym-name sap)))))
     (if name
         (format nil "foreign function: ~A" name)
         (format nil "foreign function: #x~X" (sap-int sap)))))
