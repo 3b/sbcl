@@ -1026,8 +1026,8 @@ absense."
 (define-alien-routine ("SymSetOptions" sym-set-options) (signed 32)
   (options (signed 32)))
 
-(define-alien-routine (#!+sb-unicode "SymInitializeW"
-                       #!-sb-unicode "SymInitialize"
+(define-alien-routine (#+sb-unicode "SymInitializeW"
+                       #-sb-unicode "SymInitialize"
                        sym-initialize) lispbool
   (process handle)
   (user-search-path system-string)
@@ -1036,16 +1036,16 @@ absense."
 (define-alien-routine ("SymCleanup" sym-cleanup) bool
   (process handle))
 
-(define-alien-routine (#!+sb-unicode "SymFromAddrW"
-                       #!-sb-unicode "SymFromAddr"
+(define-alien-routine (#+sb-unicode "SymFromAddrW"
+                       #-sb-unicode "SymFromAddr"
                        sym-from-addr) lispbool
   (process handle)
   (address dword64)
   (displacement dword64 :out)
   (symbol (* symbol-info)))
 
-(define-alien-routine (#!+sb-unicode "SymFromNameW"
-                       #!-sb-unicode "SymFromName"
+(define-alien-routine (#+sb-unicode "SymFromNameW"
+                       #-sb-unicode "SymFromName"
                        sym-from-name) lispbool
   (process handle)
   (name system-string)
